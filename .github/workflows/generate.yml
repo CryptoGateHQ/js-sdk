@@ -2,6 +2,7 @@ name: Generate SDK
 on:
   workflow_dispatch: {}
   push:
+    branches: [main]
     paths: ['openapi.yaml', 'openapitools.json', '.github/workflows/generate.yml']
 permissions:
   contents: write
@@ -17,10 +18,17 @@ jobs:
             generate -i /local/openapi.yaml -g typescript-axios -o /local \
             --skip-validate-spec \
             --additional-properties=npmName=@cryptogatehq/js-sdk,npmVersion=1.0.1,supportsES6=true,useSingleRequestParameter=true,gitUserId=CryptoGateHQ,gitRepoId=js-sdk
+      - name: Fix package.json metadata (generator placeholder breaks npm provenance)
+        run: |
+          npm pkg set repository.type=git
+          npm pkg set repository.url="git+https://github.com/CryptoGateHQ/js-sdk.git"
+          npm pkg set homepage="https://docs.cryptogate.live/reference"
+          npm pkg set bugs.url="https://github.com/CryptoGateHQ/js-sdk/issues"
       - name: Commit regenerated SDK
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -A
           git diff --cached --quiet || git commit -m "chore: regenerate SDK from openapi.yaml"
+          git pull --rebase --autostash
           git push
